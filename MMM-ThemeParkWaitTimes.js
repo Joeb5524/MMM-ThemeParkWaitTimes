@@ -2,6 +2,13 @@ Module.register("MMM-ThemeParkWaitTimes", {
   defaults: {
     updateInterval: 10 * 60 * 1000,
     futureHours: true,
+    hideWhenClosed: false,
+    graceBeforeOpenMins: 0,
+    graceAfterCloseMins: 0,
+    visabilityAnimationDuration: 0,
+    useVisabilityLock: true,
+    hideWhenStatusUnknown: false,
+
   },
 
   getScripts: function () {
@@ -47,18 +54,58 @@ Module.register("MMM-ThemeParkWaitTimes", {
 
     const self = this;
 
+
+    this.domReady = false;
     this.rides = [];
     this.openingTime;
     this.closingTime;
     this.futureHours;
     this.errorMessage;
+    this.openingTime = null;
+    this.closingTime = null;
+    this.futureHours = null;
+    this.errorMessage = null;
+    this.parkStatus = null;
 
     setInterval(function () {
       self.processWaitTimes();
     }, this.config.updateInterval);
     this.processWaitTimes();
   },
+  notificationReceived: function (notification) {
+    if (notification === "DOM_OBJECTS_CREATED") {
+      this.domReady = true;
+      this.updateVisibility();
+    }
+  },
 
+  updateVisibility: function () {
+    if (!this.domReady) return;
+    if (!this.config.hideWhenClosed) return;
+
+    const status = this.parkStatus;
+
+    if (!status || typeof status.isOpenNow !== "boolean") {
+      if (this.config.hideWhenStatusUnknown) this.hideWithLock();
+      else this.showWithLock();
+      return;
+    }
+
+    if (status.isOpenNow) this.showWithLock();
+    else this.hideWithLock();
+  },
+
+  hideWithLock: function () {
+    const speed = this.config.visibilityAnimationDuration || 0;
+    if (this.config.useVisibilityLock) this.hide(speed, { lockString: this.identifier });
+    else this.hide(speed);
+  },
+
+  showWithLock: function () {
+    const speed = this.config.visibilityAnimationDuration || 0;
+    if (this.config.useVisibilityLock) this.show(speed, { lockString: this.identifier });
+    else this.show(speed);
+  },
   getDom: function () {
     var table = document.createElement("table");
     table.className = "small";
@@ -108,12 +155,14 @@ Module.register("MMM-ThemeParkWaitTimes", {
       this.rides = payload.waitTimes;
       this.updateDom();
     } else if (
-      notification ===
-      "POPULATE_OPENING_TIMES_" + this.config.park.entity
+        notification ===
+        "POPULATE_OPENING_TIMES_" + this.config.park.entity
     ) {
       this.openingTime = payload.openingTime;
       this.closingTime = payload.closingTime;
       this.futureHours = payload.futureHours;
+      this.parkStatus = payload.parkStatus ?? null;
+      this.updateVisibility();
       this.updateDom();
     } else if (notification === "ERROR_" + this.config.park.entity) {
       this.errorMessage = payload.errorMessage;
@@ -123,5 +172,6 @@ Module.register("MMM-ThemeParkWaitTimes", {
 
   processWaitTimes: function () {
     this.sendSocketNotification("GET_WAIT_TIMES", this.config.park);
+    this.sendSocketNotification("GET_WAIT_TIMES", this.config);
   },
 });
