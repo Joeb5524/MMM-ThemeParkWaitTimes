@@ -111,12 +111,12 @@ npm install
 
 ## Config
 
-| **Option**       | **Requirement/Type**                 | **Description**                                        |
-| ---------------- | ------------------------------------ | ------------------------------------------------------ |
-| `park`           | Required - Described below.          | The park that the wait times will be retrieved for.    |
-| `futureHours`    | boolean - Optional - Default: true   | The module will show hours for the next 5 days or not  |
-| `updateInterval` | int - Optional - Default: 10 minutes | the time between checking for updates, in milleseconds |
-
+| **Option**        | **Requirement/Type**                 | **Description**                                           |
+|-------------------|--------------------------------------|-----------------------------------------------------------|
+| `park`            | Required - Described below.          | The park that the wait times will be retrieved for.       |
+| `futureHours`     | boolean - Optional - Default: true   | The module will show hours for the next 5 days or not     |
+| `updateInterval`  | int - Optional - Default: 10 minutes | the time between checking for updates, in milleseconds    |
+| `hideClosedParks` | boolean - Optional - Default: false  | If a park is currently closed, appear on mirror yes or no |
 ### The "park" element
 
 | **Option** | **Requirement/Type** | **Description**                                                                                                                                                                                                                                                                                                                                                                |
@@ -132,6 +132,7 @@ Here is an example for Magic Kingdom - Disney World configuration in `config.js`
   header: "Magic Kingdom - Walt Disney World", //You can call this whatever
   position: "top_left",
   config: {
+    hideClosedParks : true // will not show a park on your mirror if it is currently shut due to opening hours
     futureHours: true, //optional - allows you to hide the hours for upcoming days - true is default
     updateInterval: 10 * 60 * 1000, //optional - allows you to set how often to check for updates, in milliseconds - 10 minutes is the default
     park: {
