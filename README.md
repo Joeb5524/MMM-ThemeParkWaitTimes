@@ -111,12 +111,12 @@ npm install
 
 ## Config
 
-| **Option**        | **Requirement/Type**                 | **Description**                                           |
-|-------------------|--------------------------------------|-----------------------------------------------------------|
-| `park`            | Required - Described below.          | The park that the wait times will be retrieved for.       |
-| `futureHours`     | boolean - Optional - Default: true   | The module will show hours for the next 5 days or not     |
-| `updateInterval`  | int - Optional - Default: 10 minutes | the time between checking for updates, in milleseconds    |
-| `hideClosedParks` | boolean - Optional - Default: false  | If a park is currently closed, appear on mirror yes or no |
+| **Option**       | **Requirement/Type**                 | **Description**                                           |
+|------------------|--------------------------------------|-----------------------------------------------------------|
+| `park`           | Required - Described below.          | The park that the wait times will be retrieved for.       |
+| `futureHours`    | boolean - Optional - Default: true   | The module will show hours for the next 5 days or not     |
+| `updateInterval` | int - Optional - Default: 10 minutes | the time between checking for updates, in milleseconds    |
+| `hideWhenClosed` | boolean - Optional - Default: false  | If a park is currently closed, appear on mirror yes or no |
 ### The "park" element
 
 | **Option** | **Requirement/Type** | **Description**                                                                                                                                                                                                                                                                                                                                                                |
