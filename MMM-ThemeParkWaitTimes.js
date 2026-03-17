@@ -2,13 +2,20 @@ Module.register("MMM-ThemeParkWaitTimes", {
   defaults: {
     updateInterval: 10 * 60 * 1000,
     futureHours: true,
+
     hideWhenClosed: false,
     graceBeforeOpenMins: 0,
     graceAfterCloseMins: 0,
-    visabilityAnimationDuration: 0,
-    useVisabilityLock: true,
+
+    // Correct spellings:
+    visibilityAnimationDuration: 0,
+    useVisibilityLock: true,
+
     hideWhenStatusUnknown: false,
 
+    // Backward compat (old typos) — users may still have these in config.js:
+    // visabilityAnimationDuration: 0,
+    // useVisabilityLock: true,
   },
 
   getScripts: function () {
@@ -19,64 +26,78 @@ Module.register("MMM-ThemeParkWaitTimes", {
     return ["style.css"];
   },
 
-  getHeader: function () {
-    var headerDiv = document.createElement("div");
-    headerDiv.innerHTML = this.data.header;
-
-    var timeSpan = document.createElement("div");
-    timeSpan.className = "parkTime";
-
-    if (this.openingTime != null && this.closingTime != null) {
-      timeSpan.innerHTML = " " + this.openingTime + " - " + this.closingTime;
-    }
-    headerDiv.appendChild(timeSpan);
-
-    if (this.futureHours != null && this.config.futureHours) {
-      var hoursTable = document.createElement("table");
-      hoursTable.className += "hours";
-      var hoursRow = document.createElement("tr");
-      hoursTable.appendChild(hoursRow);
-      const d = new Date();
-      for (var i = 0; i < 5; i++) {
-        var hoursCell = document.createElement("td");
-        hoursCell.className += "day" + ((d.getDay() + i + 1) % 7);
-        hoursRow.appendChild(hoursCell);
-        hoursCell.innerHTML = this.futureHours[i];
-      }
-      headerDiv.appendChild(hoursTable);
-    }
-
-    return headerDiv.innerHTML;
-  },
-
   start: function () {
     Log.info("Starting module: " + this.name);
 
-    const self = this;
-
-
     this.domReady = false;
+
     this.rides = [];
-    this.openingTime;
-    this.closingTime;
-    this.futureHours;
-    this.errorMessage;
     this.openingTime = null;
     this.closingTime = null;
     this.futureHours = null;
     this.errorMessage = null;
     this.parkStatus = null;
 
-    setInterval(function () {
-      self.processWaitTimes();
+    this._normalizeConfig();
+
+    setInterval(() => {
+      this.processWaitTimes();
     }, this.config.updateInterval);
+
     this.processWaitTimes();
   },
+
+  _normalizeConfig: function () {
+    // Backward compatibility for misspelled config keys
+    if (
+        this.config.visibilityAnimationDuration == null &&
+        this.config.visabilityAnimationDuration != null
+    ) {
+      this.config.visibilityAnimationDuration = this.config.visabilityAnimationDuration;
+    }
+
+    if (this.config.useVisibilityLock == null && this.config.useVisabilityLock != null) {
+      this.config.useVisibilityLock = this.config.useVisabilityLock;
+    }
+  },
+
   notificationReceived: function (notification) {
     if (notification === "DOM_OBJECTS_CREATED") {
       this.domReady = true;
       this.updateVisibility();
     }
+  },
+
+  getHeader: function () {
+    const headerDiv = document.createElement("div");
+    headerDiv.innerHTML = this.data.header || "";
+
+    const timeSpan = document.createElement("div");
+    timeSpan.className = "parkTime";
+    if (this.openingTime && this.closingTime) {
+      timeSpan.innerHTML = ` ${this.openingTime} - ${this.closingTime}`;
+    }
+    headerDiv.appendChild(timeSpan);
+
+    if (this.config.futureHours && Array.isArray(this.futureHours) && this.futureHours.length) {
+      const hoursTable = document.createElement("table");
+      hoursTable.className = "hours";
+
+      const hoursRow = document.createElement("tr");
+      hoursTable.appendChild(hoursRow);
+
+      const d = new Date();
+      for (let i = 0; i < 5; i++) {
+        const hoursCell = document.createElement("td");
+        hoursCell.className = "day" + ((d.getDay() + i + 1) % 7);
+        hoursCell.innerHTML = this.futureHours[i] ?? "";
+        hoursRow.appendChild(hoursCell);
+      }
+
+      headerDiv.appendChild(hoursTable);
+    }
+
+    return headerDiv.innerHTML;
   },
 
   updateVisibility: function () {
@@ -106,72 +127,75 @@ Module.register("MMM-ThemeParkWaitTimes", {
     if (this.config.useVisibilityLock) this.show(speed, { lockString: this.identifier });
     else this.show(speed);
   },
+
   getDom: function () {
-    var table = document.createElement("table");
+    const table = document.createElement("table");
     table.className = "small";
 
     if (this.errorMessage) {
-      var row = document.createElement("tr");
-      row.className += "row";
+      const row = document.createElement("tr");
+      row.className = "row";
       table.appendChild(row);
 
-      var nameCell = document.createElement("td");
+      const nameCell = document.createElement("td");
       nameCell.className = "error";
       nameCell.innerHTML = this.errorMessage;
       row.appendChild(nameCell);
-    } else {
-      for (var i = 0, ride; (ride = this.rides[i++]); ) {
-        var row = document.createElement("tr");
-        row.className += "row";
-        table.appendChild(row);
 
-        var nameCell = document.createElement("td");
-        nameCell.className = "bright title";
-        nameCell.innerHTML = ride.name;
-        row.appendChild(nameCell);
-
-        var timeCell = document.createElement("td");
-        timeCell.className = "bright title light time";
-
-        if (ride.status == "CLOSED") {
-          timeCell.innerHTML = "closed";
-        } else if (ride.status == "DOWN") {
-          timeCell.innerHTML = "down";
-        } else if (ride.status == "REFURBISHMENT") {
-          timeCell.innerHTML = "refurb";
-        } else {
-          timeCell.innerHTML = ride.waitTime;
-        }
-
-        row.appendChild(timeCell);
-      }
+      return table;
     }
+
+    for (let i = 0, ride; (ride = this.rides[i++]); ) {
+      const row = document.createElement("tr");
+      row.className = "row";
+      table.appendChild(row);
+
+      const nameCell = document.createElement("td");
+      nameCell.className = "bright title";
+      nameCell.innerHTML = ride.name ?? "";
+      row.appendChild(nameCell);
+
+      const timeCell = document.createElement("td");
+      timeCell.className = "bright title light time";
+
+      const status = ride.status;
+      if (status === "CLOSED") timeCell.innerHTML = "closed";
+      else if (status === "DOWN") timeCell.innerHTML = "down";
+      else if (status === "REFURBISHMENT") timeCell.innerHTML = "refurb";
+      else timeCell.innerHTML = ride.waitTime == null ? "—" : String(ride.waitTime);
+
+      row.appendChild(timeCell);
+    }
+
     return table;
   },
 
   socketNotificationReceived: function (notification, payload) {
-    console.log("n: " + notification);
     if (notification === "POPULATE_WAIT_TIMES_" + this.config.park.entity) {
-      this.rides = payload.waitTimes;
+      this.rides = payload.waitTimes || [];
       this.updateDom();
-    } else if (
-        notification ===
-        "POPULATE_OPENING_TIMES_" + this.config.park.entity
-    ) {
-      this.openingTime = payload.openingTime;
-      this.closingTime = payload.closingTime;
-      this.futureHours = payload.futureHours;
+      return;
+    }
+
+    if (notification === "POPULATE_OPENING_TIMES_" + this.config.park.entity) {
+      this.openingTime = payload.openingTime ?? null;
+      this.closingTime = payload.closingTime ?? null;
+      this.futureHours = payload.futureHours ?? null;
       this.parkStatus = payload.parkStatus ?? null;
+
       this.updateVisibility();
       this.updateDom();
-    } else if (notification === "ERROR_" + this.config.park.entity) {
-      this.errorMessage = payload.errorMessage;
+      return;
+    }
+
+    if (notification === "ERROR_" + this.config.park.entity) {
+      this.errorMessage = payload.errorMessage || "Unknown error";
       this.updateDom();
     }
   },
 
   processWaitTimes: function () {
-    this.sendSocketNotification("GET_WAIT_TIMES", this.config.park);
+    // Send ONCE to avoid doubling API calls
     this.sendSocketNotification("GET_WAIT_TIMES", this.config);
   },
 });
