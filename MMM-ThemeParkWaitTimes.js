@@ -7,15 +7,14 @@ Module.register("MMM-ThemeParkWaitTimes", {
     graceBeforeOpenMins: 0,
     graceAfterCloseMins: 0,
 
-    // Correct spellings:
     visibilityAnimationDuration: 0,
     useVisibilityLock: true,
 
     hideWhenStatusUnknown: false,
 
-    // Backward compat (old typos) — users may still have these in config.js:
-    // visabilityAnimationDuration: 0,
-    // useVisabilityLock: true,
+    // Debug/status UI
+    showStatusIndicator: true,
+    debugShowClosedInsteadOfHide: false, // set true to keep module visible and show "Park closed"
   },
 
   getScripts: function () {
@@ -48,7 +47,6 @@ Module.register("MMM-ThemeParkWaitTimes", {
   },
 
   _normalizeConfig: function () {
-    // Backward compatibility for misspelled config keys
     if (
         this.config.visibilityAnimationDuration == null &&
         this.config.visabilityAnimationDuration != null
@@ -100,6 +98,16 @@ Module.register("MMM-ThemeParkWaitTimes", {
     return headerDiv.innerHTML;
   },
 
+  _getParkStatusText: function () {
+    const status = this.parkStatus;
+
+    if (!status || typeof status.isOpenNow !== "boolean") {
+      return "Park status unknown";
+    }
+
+    return status.isOpenNow ? "Park open" : "Park closed";
+  },
+
   updateVisibility: function () {
     if (!this.domReady) return;
     if (!this.config.hideWhenClosed) return;
@@ -112,8 +120,17 @@ Module.register("MMM-ThemeParkWaitTimes", {
       return;
     }
 
-    if (status.isOpenNow) this.showWithLock();
-    else this.hideWithLock();
+    if (status.isOpenNow) {
+      this.showWithLock();
+      return;
+    }
+
+    if (this.config.debugShowClosedInsteadOfHide) {
+      this.showWithLock();
+      return;
+    }
+
+    this.hideWithLock();
   },
 
   hideWithLock: function () {
@@ -129,6 +146,15 @@ Module.register("MMM-ThemeParkWaitTimes", {
   },
 
   getDom: function () {
+    const wrapper = document.createElement("div");
+
+    if (this.config.showStatusIndicator) {
+      const indicator = document.createElement("div");
+      indicator.className = "parkStatusIndicator";
+      indicator.innerHTML = this._getParkStatusText();
+      wrapper.appendChild(indicator);
+    }
+
     const table = document.createElement("table");
     table.className = "small";
 
@@ -142,7 +168,8 @@ Module.register("MMM-ThemeParkWaitTimes", {
       nameCell.innerHTML = this.errorMessage;
       row.appendChild(nameCell);
 
-      return table;
+      wrapper.appendChild(table);
+      return wrapper;
     }
 
     for (let i = 0, ride; (ride = this.rides[i++]); ) {
@@ -167,7 +194,8 @@ Module.register("MMM-ThemeParkWaitTimes", {
       row.appendChild(timeCell);
     }
 
-    return table;
+    wrapper.appendChild(table);
+    return wrapper;
   },
 
   socketNotificationReceived: function (notification, payload) {
@@ -195,7 +223,6 @@ Module.register("MMM-ThemeParkWaitTimes", {
   },
 
   processWaitTimes: function () {
-    // Send ONCE to avoid doubling API calls
     this.sendSocketNotification("GET_WAIT_TIMES", this.config);
   },
 });

@@ -46,3 +46,6 @@ table.hours td.day6,
 table.hours td.day0 {
   color: #f5f5f5;
 }
+.parkStatusIndicator {
+  margin-bottom: 6px;
+}
